@@ -9,12 +9,14 @@ namespace ScorePercentage.HarmonyPatches
     {
         private readonly BeatmapLevelLoader _beatmapLevelLoader;
         private readonly StandardLevelDetailViewController _standardLevelDetailViewController;
+        private readonly BeatmapLevelsEntitlementModel _beatmapLevelsEntitlementModel;
         private readonly BeatmapDataLoader _beatmapDataLoader = new BeatmapDataLoader();
 
-        public LevelStatsViewPatches(BeatmapLevelLoader beatmapLevelLoader, StandardLevelDetailViewController standardLevelDetailViewController)
+        public LevelStatsViewPatches(BeatmapLevelLoader beatmapLevelLoader, StandardLevelDetailViewController standardLevelDetailViewController, BeatmapLevelsEntitlementModel beatmapLevelsEntitlementModel)
         {
             _beatmapLevelLoader = beatmapLevelLoader;
             _standardLevelDetailViewController = standardLevelDetailViewController;
+            _beatmapLevelsEntitlementModel = beatmapLevelsEntitlementModel;
         }
 
         [AffinityPatch(typeof(LevelStatsView), nameof(LevelStatsView.ShowStats))]
@@ -62,8 +64,9 @@ namespace ScorePercentage.HarmonyPatches
                 Plugin.log.Debug("Running Postfix");
 
                 var beatmapLevel = _standardLevelDetailViewController.beatmapLevel;
-                var beatmapLevelData = await _beatmapLevelLoader.LoadBeatmapLevelDataAsync(beatmapLevel, CancellationToken.None);
-                var currentReadonlyBeatmapData = await _beatmapDataLoader.LoadBeatmapDataAsync(beatmapLevelData.beatmapLevelData, beatmapKey, beatmapLevel.beatsPerMinute, true, null, playerData.gameplayModifiers, playerData.playerSpecificSettings, false);
+                var beatmapLevelDataVersion = await _beatmapLevelsEntitlementModel.GetLevelDataVersionAsync(beatmapLevel.levelID, CancellationToken.None);
+                var beatmapLevelData = await _beatmapLevelLoader.LoadBeatmapLevelDataAsync(beatmapLevel, beatmapLevelDataVersion, CancellationToken.None);
+                var currentReadonlyBeatmapData = await _beatmapDataLoader.LoadBeatmapDataAsync(beatmapLevelData.beatmapLevelData, beatmapKey, beatmapLevel.beatsPerMinute, true, null, beatmapLevelDataVersion, playerData.gameplayModifiers, playerData.playerSpecificSettings, false);
 
                 int currentDifficultyMaxScore = ScoreModel.ComputeMaxMultipliedScoreForBeatmap(currentReadonlyBeatmapData);
                 //Plugin.log.Debug("Calculated Max Score: " + currentDifficultyMaxScore.ToString());
