@@ -1,30 +1,28 @@
-﻿using System;
-using HarmonyLib;
+using SiraUtil.Affinity;
+using System;
 
 
-namespace ScorePercentage.HarmonyPatches
+namespace ScorePercentage.Patches
 {
-    [HarmonyPatch(typeof(ResultsViewController))]
-    [HarmonyPatch("SetDataToUI", MethodType.Normal)]
-    class ResultsViewControllerPatches : ResultsViewController
+    class ResultsViewControllerPatches : IAffinity
     {
-        //static void Postfix(LevelCompletionResults ___levelCompletionResults)
-        static void Postfix(ref ResultsViewControllerPatches __instance)
+        [AffinityPatch(typeof(ResultsViewController), nameof(ResultsViewController.SetDataToUI))]
+        [AffinityPostfix]
+        private void Postfix(ResultsViewController __instance)
         {
-
             int maxScore;
             double resultPercentage;
             int resultScore;
             int modifiedScore;
             // Default Rank Text
-            string rankTextLine1 = Traverse.Create(__instance).Field("rankText.text").GetValue<String>(); // __instance._rankText.text;
+            string rankTextLine1 = __instance._rankText.text;
             string rankTextLine2 = "";
             // Colors
             string colorPositive = "#00B300";
             string colorNegative = "#FF0000";
             //Empty for negatives, "+" for positives
             string positiveIndicator = "";
-            LevelCompletionResults levelCompletionResults = Traverse.Create(__instance).Field("_levelCompletionResults").GetValue<LevelCompletionResults>();
+            LevelCompletionResults levelCompletionResults = __instance._levelCompletionResults;
 
 
             //Only calculate percentage, if map was successfully cleared
@@ -32,8 +30,8 @@ namespace ScorePercentage.HarmonyPatches
             {
                 modifiedScore = levelCompletionResults.modifiedScore;
                 //maxScore = ScorePercentageCommon.calculateMaxScore(__instance._difficultyBeatmap.beatmapData.cuttableNotesCount);
-                
-                maxScore = ScoreModel.ComputeMaxMultipliedScoreForBeatmap(Traverse.Create(__instance).Field("_transformedBeatmapData").GetValue<IReadonlyBeatmapData>());
+
+                maxScore = ScoreModel.ComputeMaxMultipliedScoreForBeatmap(__instance._transformedBeatmapData);
 
 
                 //use modifiedScore with negative multipliers
@@ -56,8 +54,8 @@ namespace ScorePercentage.HarmonyPatches
                 resultPercentage = ScorePercentageCommon.calculatePercentage(maxScore, resultScore);
 
                 //disable wrapping and autosize (unneccessary?)
-                Traverse.Create(__instance).Field("_rankText").Property("autoSizeTextContainer").SetValue(false);
-                Traverse.Create(__instance).Field("_rankText").Property("enableWordWrapping").SetValue(false);
+                __instance._rankText.autoSizeTextContainer = false;
+                __instance._rankText.enableWordWrapping = false;
 
 
                 //Rank Text Changes
@@ -89,12 +87,12 @@ namespace ScorePercentage.HarmonyPatches
                                 positiveIndicator = "-";
                             }
                         }
-                        rankTextLine2 = "\n<color=" + percentageDifferenceColor + "><size=40%>" + positiveIndicator + Math.Round(percentageDifference,2).ToString() + "<size=30%>%";
+                        rankTextLine2 = "\n<color=" + percentageDifferenceColor + "><size=40%>" + positiveIndicator + Math.Round(percentageDifference, 2).ToString() + "<size=30%>%";
                     }
-                    Traverse.Create(__instance).Field("_newHighScoreText").Property("SetActive").SetValue(false);
+                    __instance._newHighScoreText.SetActive(false);
                 }//End Preparations for Changes to Rank Text
 
-                Traverse.Create(__instance).Field("_rankText").Property("text").SetValue(rankTextLine1 + rankTextLine2);
+                __instance._rankText.text = rankTextLine1 + rankTextLine2;
 
 
                 //Add ScoreDifference Calculation if enabled
@@ -120,12 +118,10 @@ namespace ScorePercentage.HarmonyPatches
                         }
 
                         //Build new ScoreText string
-                        Traverse.Create(__instance).Field("_scoreText").Property("text").SetValue(
-                                "<line-height=27.5%><size=60%>" + ScoreFormatter.Format(modifiedScore) + "\n"
-                                + "<size=40%><color=" + scoreDifferenceColor + "><size=40%>" + positiveIndicator + scoreDifference
-                        );
+                        __instance._scoreText.text = "<line-height=27.5%><size=60%>" + ScoreFormatter.Format(modifiedScore) + "\n"
+                                + "<size=40%><color=" + scoreDifferenceColor + "><size=40%>" + positiveIndicator + scoreDifference;
                     }
-
+                    __instance._newHighScoreText.SetActive(false);
                 }//End ScoreDifference Calculation
 
             }//End Level Cleared

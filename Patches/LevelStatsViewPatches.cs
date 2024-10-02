@@ -1,9 +1,8 @@
-﻿using HarmonyLib;
-using SiraUtil.Affinity;
+﻿using SiraUtil.Affinity;
 using System;
 using System.Threading;
 
-namespace ScorePercentage.HarmonyPatches
+namespace ScorePercentage.Patches
 {
     class LevelStatsViewPatches : IAffinity
     {
@@ -21,7 +20,7 @@ namespace ScorePercentage.HarmonyPatches
 
         [AffinityPatch(typeof(LevelStatsView), nameof(LevelStatsView.ShowStats))]
         [AffinityPrefix]
-        private void PrefixShowStats(LevelStatsViewPatches __instance, in BeatmapKey beatmapKey, PlayerData playerData)
+        private void PrefixShowStats(LevelStatsView __instance, in BeatmapKey beatmapKey, PlayerData playerData)
         {
             //Update highScoreText, if enabled in Plugin Config
             if (PluginConfig.Instance.EnableMenuHighscore)
@@ -44,7 +43,7 @@ namespace ScorePercentage.HarmonyPatches
 
                 }
                 else
-                {                 
+                {
                     //Plugin.log.Debug("Player data was null");
                 }
             }
@@ -52,12 +51,12 @@ namespace ScorePercentage.HarmonyPatches
 
         [AffinityPatch(typeof(LevelStatsView), nameof(LevelStatsView.ShowStats))]
         [AffinityPostfix]
-        private void PostfixShowStats(LevelStatsViewPatches __instance, in BeatmapKey beatmapKey, PlayerData playerData)
+        private void PostfixShowStats(LevelStatsView __instance, in BeatmapKey beatmapKey, PlayerData playerData)
         {
             PostfixShowStatsAsync(__instance, beatmapKey, playerData);
         }
 
-        async void PostfixShowStatsAsync(LevelStatsViewPatches __instance, BeatmapKey beatmapKey, PlayerData playerData)
+        async void PostfixShowStatsAsync(LevelStatsView __instance, BeatmapKey beatmapKey, PlayerData playerData)
         {
             if (Plugin.scorePercentageCommon.currentScore != 0)
             {
@@ -74,8 +73,7 @@ namespace ScorePercentage.HarmonyPatches
                 //Plugin.log.Debug("Calculated Percentage");
                 //Plugin.log.Debug("Adding Percentage to HighscoreText");
 
-                Traverse.Create(__instance).Field("_highScoreText").Property("text").SetValue(Plugin.scorePercentageCommon.currentScore.ToString() + " " + "(" + Math.Round(Plugin.scorePercentageCommon.currentPercentage, 2).ToString() + "%)");
-                // __instance._highScoreText.text = Plugin.scorePercentageCommon.currentScore.ToString() + " " + "(" + Math.Round(Plugin.scorePercentageCommon.currentPercentage,2).ToString() + "%)";
+                __instance._highScoreText.text = Plugin.scorePercentageCommon.currentScore.ToString() + " " + "(" + Math.Round(Plugin.scorePercentageCommon.currentPercentage, 2).ToString() + "%)";
             }
 
         }

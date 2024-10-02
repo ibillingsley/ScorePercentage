@@ -4,7 +4,6 @@ using IPA.Utilities;
 using IPA.Config.Stores;
 using UnityEngine.SceneManagement;
 using IPA.Logging;
-using HarmonyLib;
 using System;
 using SiraUtil.Zenject;
 using ScorePercentage.Installers;
@@ -16,8 +15,7 @@ namespace ScorePercentage
     public class Plugin
     {
         public static string PluginName => "ScorePercentage";
-//        internal static Ref<PluginConfig> config;
-        internal static Harmony harmony;
+        //internal static Ref<PluginConfig> config;
         internal static ScorePercentageCommon scorePercentageCommon;
 
         public static Logger log { get; private set; }
@@ -25,7 +23,6 @@ namespace ScorePercentage
         [Init]
         public void Init(Logger logger, Config cfgProvider, Zenjector zenjector)
         {
-            //Logger.log = logger;
             log = logger;
             PluginConfig.Instance = cfgProvider.Generated<PluginConfig>();
             zenjector.Install<MenuInstaller>(Location.Menu);
@@ -37,16 +34,12 @@ namespace ScorePercentage
             log.Debug("Starting ScorePercentage Plugin");
             //Settings.PluginConfig.LoadConfig();
             scorePercentageCommon = new ScorePercentageCommon();
-            harmony = new Harmony("com.Idlebob.BeatSaber.ScorePercentage");
-            //Patch Classes
-            harmony.PatchAll(System.Reflection.Assembly.GetExecutingAssembly());
         }
 
         [OnExit]
         public void OnApplicationQuit()
         {
             log.Debug("Stopping ScorePercentage Plugin");
-            harmony.UnpatchSelf();
         }
 
         public void OnFixedUpdate()

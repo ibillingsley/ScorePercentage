@@ -1,10 +1,5 @@
-﻿using ScorePercentage.HarmonyPatches;
+﻿using ScorePercentage.Patches;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Zenject;
 
 namespace ScorePercentage.Installers
@@ -14,6 +9,7 @@ namespace ScorePercentage.Installers
         public override void InstallBindings()
         {
             Container.BindInterfacesTo<LevelStatsViewPatches>().AsSingle();
+            Container.BindInterfacesTo<ResultsViewControllerPatches>().AsSingle();
         }
     }
 }
