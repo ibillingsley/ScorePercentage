@@ -19,63 +19,46 @@ namespace ScorePercentage.Patches
         }
 
         [AffinityPatch(typeof(LevelStatsView), nameof(LevelStatsView.ShowStats))]
-        [AffinityPrefix]
-        private void PrefixShowStats(LevelStatsView __instance, in BeatmapKey beatmapKey, PlayerData playerData)
-        {
-            //Update highScoreText, if enabled in Plugin Config
-            if (PluginConfig.Instance.EnableMenuHighscore)
-            {
-                if (playerData != null)
-                {
-                    PlayerLevelStatsData playerLevelStatsData = playerData.GetOrCreatePlayerLevelStatsData(beatmapKey);
-
-                    //Prepare Data for LevelStatsView
-                    if (playerLevelStatsData.validScore)
-                    {
-                        //Plugin.log.Debug("Valid Score");
-                        Plugin.scorePercentageCommon.currentScore = playerLevelStatsData.highScore;
-                    }
-                    else
-                    {
-                        Plugin.scorePercentageCommon.currentPercentage = 0;
-                        Plugin.scorePercentageCommon.currentScore = 0;
-                    }
-
-                }
-                else
-                {
-                    //Plugin.log.Debug("Player data was null");
-                }
-            }
-        }
-
-        [AffinityPatch(typeof(LevelStatsView), nameof(LevelStatsView.ShowStats))]
         [AffinityPostfix]
         private void PostfixShowStats(LevelStatsView __instance, in BeatmapKey beatmapKey, PlayerData playerData)
         {
-            PostfixShowStatsAsync(__instance, beatmapKey, playerData);
+            //Update highScoreText, if enabled in Plugin Config
+            if (!PluginConfig.Instance.EnableMenuHighscore || playerData == null)
+            {
+                return;
+            }
+
+            PlayerLevelStatsData playerLevelStatsData = playerData.GetOrCreatePlayerLevelStatsData(beatmapKey);
+
+            if (playerLevelStatsData.validScore)
+            {
+                //Plugin.log.Debug("Valid Score");
+                var currentScore = playerLevelStatsData.highScore;
+                if (currentScore != 0)
+                {
+                    ShowPercentage(__instance, beatmapKey, playerData, currentScore);
+                }
+            }
         }
 
-        async void PostfixShowStatsAsync(LevelStatsView __instance, BeatmapKey beatmapKey, PlayerData playerData)
+        private async void ShowPercentage(LevelStatsView __instance, BeatmapKey beatmapKey, PlayerData playerData, int currentScore)
         {
-            if (Plugin.scorePercentageCommon.currentScore != 0)
+            var beatmapLevel = _standardLevelDetailViewController.beatmapLevel;
+            var beatmapLevelDataVersion = await _beatmapLevelsEntitlementModel.GetLevelDataVersionAsync(beatmapLevel.levelID, CancellationToken.None);
+            var beatmapLevelData = await _beatmapLevelLoader.LoadBeatmapLevelDataAsync(beatmapLevel, beatmapLevelDataVersion, CancellationToken.None);
+            var currentReadonlyBeatmapData = await _beatmapDataLoader.LoadBeatmapDataAsync(beatmapLevelData.beatmapLevelData, beatmapKey, beatmapLevel.beatsPerMinute, true, null, beatmapLevelDataVersion, playerData.gameplayModifiers, playerData.playerSpecificSettings, false);
+
+            int maxScore = ScoreModel.ComputeMaxMultipliedScoreForBeatmap(currentReadonlyBeatmapData);
+            //Plugin.log.Debug("Calculated Max Score: " + maxScore.ToString());
+
+            if (maxScore != 0)
             {
-                Plugin.log.Debug("Running Postfix");
-
-                var beatmapLevel = _standardLevelDetailViewController.beatmapLevel;
-                var beatmapLevelDataVersion = await _beatmapLevelsEntitlementModel.GetLevelDataVersionAsync(beatmapLevel.levelID, CancellationToken.None);
-                var beatmapLevelData = await _beatmapLevelLoader.LoadBeatmapLevelDataAsync(beatmapLevel, beatmapLevelDataVersion, CancellationToken.None);
-                var currentReadonlyBeatmapData = await _beatmapDataLoader.LoadBeatmapDataAsync(beatmapLevelData.beatmapLevelData, beatmapKey, beatmapLevel.beatsPerMinute, true, null, beatmapLevelDataVersion, playerData.gameplayModifiers, playerData.playerSpecificSettings, false);
-
-                int currentDifficultyMaxScore = ScoreModel.ComputeMaxMultipliedScoreForBeatmap(currentReadonlyBeatmapData);
-                //Plugin.log.Debug("Calculated Max Score: " + currentDifficultyMaxScore.ToString());
-                Plugin.scorePercentageCommon.currentPercentage = ScorePercentageCommon.calculatePercentage(currentDifficultyMaxScore, Plugin.scorePercentageCommon.currentScore);
+                var currentPercentage = ScorePercentageCommon.calculatePercentage(maxScore, currentScore);
                 //Plugin.log.Debug("Calculated Percentage");
                 //Plugin.log.Debug("Adding Percentage to HighscoreText");
 
-                __instance._highScoreText.text = Plugin.scorePercentageCommon.currentScore.ToString() + " " + "(" + Math.Round(Plugin.scorePercentageCommon.currentPercentage, 2).ToString() + "%)";
+                __instance._highScoreText.text = currentScore.ToString() + " " + "(" + Math.Round(currentPercentage, 2).ToString() + "%)";
             }
-
         }
     }
 }

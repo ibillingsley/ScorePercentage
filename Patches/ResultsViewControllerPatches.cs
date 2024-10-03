@@ -1,4 +1,4 @@
-using SiraUtil.Affinity;
+﻿using SiraUtil.Affinity;
 using System;
 
 
@@ -6,9 +6,18 @@ namespace ScorePercentage.Patches
 {
     class ResultsViewControllerPatches : IAffinity
     {
+        private int oldScore = 0;
+
+        [AffinityPatch(typeof(SoloFreePlayFlowCoordinator), nameof(SoloFreePlayFlowCoordinator.ProcessLevelCompletionResultsAfterLevelDidFinish))]
+        [AffinityPrefix]
+        private void PrefixProcessLevelCompletionResultsAfterLevelDidFinish(SoloFreePlayFlowCoordinator __instance, BeatmapKey beatmapKey)
+        {
+            oldScore = __instance.playerDataModel.playerData.GetOrCreatePlayerLevelStatsData(beatmapKey).highScore;
+        }
+
         [AffinityPatch(typeof(ResultsViewController), nameof(ResultsViewController.SetDataToUI))]
         [AffinityPostfix]
-        private void Postfix(ResultsViewController __instance)
+        private void PostfixSetDataToUI(ResultsViewController __instance)
         {
             int maxScore;
             double resultPercentage;
@@ -57,7 +66,6 @@ namespace ScorePercentage.Patches
                 __instance._rankText.autoSizeTextContainer = false;
                 __instance._rankText.enableWordWrapping = false;
 
-
                 //Rank Text Changes
                 if (PluginConfig.Instance.EnableLevelEndRank)
                 {
@@ -65,10 +73,10 @@ namespace ScorePercentage.Patches
                     rankTextLine1 = "<line-height=27.5%><size=60%>" + Math.Round(resultPercentage, 2).ToString() + "<size=45%>%";
 
                     // Add Percent Difference to 2nd Line if enabled and previous Score exists
-                    if (PluginConfig.Instance.EnableScorePercentageDifference && Plugin.scorePercentageCommon.currentPercentage != 0)
+                    if (PluginConfig.Instance.EnableScorePercentageDifference && oldScore != 0)
                     {
-                        double currentPercentage = Plugin.scorePercentageCommon.currentPercentage;
-                        double percentageDifference = resultPercentage - currentPercentage;
+                        double oldPercentage = ScorePercentageCommon.calculatePercentage(maxScore, oldScore);
+                        double percentageDifference = resultPercentage - oldPercentage;
                         string percentageDifferenceColor;
                         //Better or same Score
                         if (percentageDifference >= 0)
@@ -96,41 +104,32 @@ namespace ScorePercentage.Patches
 
 
                 //Add ScoreDifference Calculation if enabled
-                if (PluginConfig.Instance.EnableScoreDifference)
+                if (PluginConfig.Instance.EnableScoreDifference && oldScore != 0)
                 {
                     string scoreDifference = "";
                     string scoreDifferenceColor = "";
-                    int currentScore = Plugin.scorePercentageCommon.currentScore;
-                    if (currentScore != 0)
+                    scoreDifference = ScoreFormatter.Format(modifiedScore - oldScore);
+                    //Better Score
+                    if ((modifiedScore - oldScore) >= 0)
                     {
-                        scoreDifference = ScoreFormatter.Format(modifiedScore - currentScore);
-                        //Better Score
-                        if ((modifiedScore - currentScore) >= 0)
-                        {
-                            scoreDifferenceColor = colorPositive;
-                            positiveIndicator = "+";
-                        }
-                        //Worse Score
-                        else if ((modifiedScore - currentScore) < 0)
-                        {
-                            scoreDifferenceColor = colorNegative;
-                            positiveIndicator = "";
-                        }
-
-                        //Build new ScoreText string
-                        __instance._scoreText.text = "<line-height=27.5%><size=60%>" + ScoreFormatter.Format(modifiedScore) + "\n"
-                                + "<size=40%><color=" + scoreDifferenceColor + "><size=40%>" + positiveIndicator + scoreDifference;
+                        scoreDifferenceColor = colorPositive;
+                        positiveIndicator = "+";
                     }
+                    //Worse Score
+                    else if ((modifiedScore - oldScore) < 0)
+                    {
+                        scoreDifferenceColor = colorNegative;
+                        positiveIndicator = "";
+                    }
+
+                    //Build new ScoreText string
+                    __instance._scoreText.text = "<line-height=27.5%><size=60%>" + ScoreFormatter.Format(modifiedScore) + "\n"
+                            + "<size=40%><color=" + scoreDifferenceColor + "><size=40%>" + positiveIndicator + scoreDifference;
+
                     __instance._newHighScoreText.SetActive(false);
                 }//End ScoreDifference Calculation
 
             }//End Level Cleared
-
-            //Reset currentScore and currentPercentage in case next ResultScreen isn't loaded from StandardLevelDetailView
-            //Does this even do anything!?
-            Plugin.scorePercentageCommon.currentPercentage = 0;
-            Plugin.scorePercentageCommon.currentScore = 0;
-
 
         }//End Postfix Function
 
