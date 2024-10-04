@@ -15,6 +15,13 @@ namespace ScorePercentage.Patches
             oldScore = __instance.playerDataModel.playerData.GetOrCreatePlayerLevelStatsData(beatmapKey).highScore;
         }
 
+        [AffinityPatch(typeof(PartyFreePlayFlowCoordinator), nameof(PartyFreePlayFlowCoordinator.ProcessLevelCompletionResultsAfterLevelDidFinish))]
+        [AffinityPrefix]
+        private void PrefixPartyProcessLevelCompletionResultsAfterLevelDidFinish(PartyFreePlayFlowCoordinator __instance, BeatmapKey beatmapKey)
+        {
+            oldScore = __instance.playerDataModel.playerData.GetOrCreatePlayerLevelStatsData(beatmapKey).highScore;
+        }
+
         [AffinityPatch(typeof(ResultsViewController), nameof(ResultsViewController.SetDataToUI))]
         [AffinityPostfix]
         private void PostfixSetDataToUI(ResultsViewController __instance)
@@ -130,6 +137,9 @@ namespace ScorePercentage.Patches
                 }//End ScoreDifference Calculation
 
             }//End Level Cleared
+
+            // Reset highscore
+            oldScore = 0;
 
         }//End Postfix Function
 
