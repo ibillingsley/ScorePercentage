@@ -1,21 +1,16 @@
 ﻿using SiraUtil.Affinity;
+using SongPlayHistory.SongPlayData;
 using System;
-using System.Threading;
 
 namespace ScorePercentage.Patches
 {
     class LevelStatsViewPatches : IAffinity
     {
-        private readonly BeatmapLevelLoader _beatmapLevelLoader;
-        private readonly StandardLevelDetailViewController _standardLevelDetailViewController;
-        private readonly BeatmapLevelsEntitlementModel _beatmapLevelsEntitlementModel;
-        private readonly BeatmapDataLoader _beatmapDataLoader = new BeatmapDataLoader();
+        private readonly IScoringCacheManager _scoringCacheManager;
 
-        public LevelStatsViewPatches(BeatmapLevelLoader beatmapLevelLoader, StandardLevelDetailViewController standardLevelDetailViewController, BeatmapLevelsEntitlementModel beatmapLevelsEntitlementModel)
+        public LevelStatsViewPatches(IScoringCacheManager scoringCacheManager)
         {
-            _beatmapLevelLoader = beatmapLevelLoader;
-            _standardLevelDetailViewController = standardLevelDetailViewController;
-            _beatmapLevelsEntitlementModel = beatmapLevelsEntitlementModel;
+            _scoringCacheManager = scoringCacheManager;
         }
 
         [AffinityPatch(typeof(LevelStatsView), nameof(LevelStatsView.ShowStats))]
@@ -36,19 +31,15 @@ namespace ScorePercentage.Patches
                 var currentScore = playerLevelStatsData.highScore;
                 if (currentScore != 0)
                 {
-                    ShowPercentage(__instance, beatmapKey, playerData, currentScore);
+                    ShowPercentage(__instance, beatmapKey, currentScore);
                 }
             }
         }
 
-        private async void ShowPercentage(LevelStatsView __instance, BeatmapKey beatmapKey, PlayerData playerData, int currentScore)
+        async void ShowPercentage(LevelStatsView __instance, BeatmapKey beatmapKey, int currentScore)
         {
-            var beatmapLevel = _standardLevelDetailViewController.beatmapLevel;
-            var beatmapLevelDataVersion = await _beatmapLevelsEntitlementModel.GetLevelDataVersionAsync(beatmapLevel.levelID, CancellationToken.None);
-            var beatmapLevelData = await _beatmapLevelLoader.LoadBeatmapLevelDataAsync(beatmapLevel, beatmapLevelDataVersion, CancellationToken.None);
-            var currentReadonlyBeatmapData = await _beatmapDataLoader.LoadBeatmapDataAsync(beatmapLevelData.beatmapLevelData, beatmapKey, beatmapLevel.beatsPerMinute, true, null, beatmapLevelDataVersion, playerData.gameplayModifiers, playerData.playerSpecificSettings, false);
-
-            int maxScore = ScoreModel.ComputeMaxMultipliedScoreForBeatmap(currentReadonlyBeatmapData);
+            var levelScoringCache = await _scoringCacheManager.GetScoringInfo(beatmapKey);
+            int maxScore = levelScoringCache.MaxMultipliedScore;
             //Plugin.log.Debug("Calculated Max Score: " + maxScore.ToString());
 
             if (maxScore != 0)
