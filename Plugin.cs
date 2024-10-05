@@ -15,7 +15,6 @@ namespace ScorePercentage
     public class Plugin
     {
         public static string PluginName => "ScorePercentage";
-        //internal static Ref<PluginConfig> config;
         internal static ScorePercentageCommon scorePercentageCommon;
 
         public static Logger log { get; private set; }
@@ -32,7 +31,6 @@ namespace ScorePercentage
         public void OnApplicationStart()
         {
             log.Debug("Starting ScorePercentage Plugin");
-            //Settings.PluginConfig.LoadConfig();
             scorePercentageCommon = new ScorePercentageCommon();
         }
 
