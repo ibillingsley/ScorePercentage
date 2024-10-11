@@ -4,17 +4,19 @@ using System;
 
 namespace ScorePercentage.Patches
 {
+    class ResultsViewData : IAffinity
+    {
+        public static int highScore = 0;
+
+        public ResultsViewData(PlayerDataModel playerDataModel, BeatmapKey beatmapKey)
+        {
+            var playerLevelStatsData = playerDataModel.playerData.GetOrCreatePlayerLevelStatsData(beatmapKey);
+            highScore = playerLevelStatsData.validScore ? playerLevelStatsData.highScore : 0;
+        }
+    }
+
     class ResultsViewControllerPatches : IAffinity
     {
-        private int oldScore = 0;
-
-        [AffinityPatch(typeof(SoloFreePlayFlowCoordinator), nameof(SoloFreePlayFlowCoordinator.ProcessLevelCompletionResultsAfterLevelDidFinish))]
-        [AffinityPrefix]
-        private void PrefixProcessLevelCompletionResultsAfterLevelDidFinish(SoloFreePlayFlowCoordinator __instance, BeatmapKey beatmapKey)
-        {
-            oldScore = __instance.playerDataModel.playerData.GetOrCreatePlayerLevelStatsData(beatmapKey).highScore;
-        }
-
         [AffinityPatch(typeof(ResultsViewController), nameof(ResultsViewController.SetDataToUI))]
         [AffinityPostfix]
         private void PostfixSetDataToUI(ResultsViewController __instance)
@@ -23,6 +25,7 @@ namespace ScorePercentage.Patches
             double resultPercentage;
             int resultScore;
             int modifiedScore;
+            int highScore = ResultsViewData.highScore;
             // Default Rank Text
             string rankTextLine1 = __instance._rankText.text;
             string rankTextLine2 = "";
@@ -73,9 +76,9 @@ namespace ScorePercentage.Patches
                     rankTextLine1 = "<line-height=27.5%><size=60%>" + Math.Round(resultPercentage, 2).ToString() + "<size=45%>%";
 
                     // Add Percent Difference to 2nd Line if enabled and previous Score exists
-                    if (PluginConfig.Instance.EnableScorePercentageDifference && oldScore != 0)
+                    if (PluginConfig.Instance.EnableScorePercentageDifference && highScore != 0)
                     {
-                        double oldPercentage = ScorePercentageCommon.calculatePercentage(maxScore, oldScore);
+                        double oldPercentage = ScorePercentageCommon.calculatePercentage(maxScore, highScore);
                         double percentageDifference = resultPercentage - oldPercentage;
                         string percentageDifferenceColor;
                         //Better or same Score
@@ -104,19 +107,19 @@ namespace ScorePercentage.Patches
 
 
                 //Add ScoreDifference Calculation if enabled
-                if (PluginConfig.Instance.EnableScoreDifference && oldScore != 0)
+                if (PluginConfig.Instance.EnableScoreDifference && highScore != 0)
                 {
                     string scoreDifference = "";
                     string scoreDifferenceColor = "";
-                    scoreDifference = ScoreFormatter.Format(modifiedScore - oldScore);
+                    scoreDifference = ScoreFormatter.Format(modifiedScore - highScore);
                     //Better Score
-                    if ((modifiedScore - oldScore) >= 0)
+                    if ((modifiedScore - highScore) >= 0)
                     {
                         scoreDifferenceColor = colorPositive;
                         positiveIndicator = "+";
                     }
                     //Worse Score
-                    else if ((modifiedScore - oldScore) < 0)
+                    else if ((modifiedScore - highScore) < 0)
                     {
                         scoreDifferenceColor = colorNegative;
                         positiveIndicator = "";
@@ -130,6 +133,9 @@ namespace ScorePercentage.Patches
                 }//End ScoreDifference Calculation
 
             }//End Level Cleared
+
+            // Reset highScore
+            ResultsViewData.highScore = 0;
 
         }//End Postfix Function
 

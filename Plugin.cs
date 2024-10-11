@@ -15,7 +15,6 @@ namespace ScorePercentage
     public class Plugin
     {
         public static string PluginName => "ScorePercentage";
-        //internal static Ref<PluginConfig> config;
         internal static ScorePercentageCommon scorePercentageCommon;
 
         public static Logger log { get; private set; }
@@ -26,13 +25,13 @@ namespace ScorePercentage
             log = logger;
             PluginConfig.Instance = cfgProvider.Generated<PluginConfig>();
             zenjector.Install<MenuInstaller>(Location.Menu);
+            zenjector.Install<GameInstaller>(Location.GameCore);
         }
 
         [OnStart]
         public void OnApplicationStart()
         {
             log.Debug("Starting ScorePercentage Plugin");
-            //Settings.PluginConfig.LoadConfig();
             scorePercentageCommon = new ScorePercentageCommon();
         }
 
