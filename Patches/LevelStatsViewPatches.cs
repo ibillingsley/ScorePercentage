@@ -1,55 +1,59 @@
 ﻿using SiraUtil.Affinity;
+using SongPlayHistory.Model;
 using SongPlayHistory.SongPlayData;
 using System;
+using System.Threading.Tasks;
 
 namespace ScorePercentage.Patches
 {
     class LevelStatsViewPatches : IAffinity
     {
-        private readonly IScoringCacheManager _scoringCacheManager;
-
-        public LevelStatsViewPatches(IScoringCacheManager scoringCacheManager)
-        {
-            _scoringCacheManager = scoringCacheManager;
-        }
+        private LevelStatsView? _levelStatsView;
+        private BeatmapKey? _beatmapKey;
+        private BeatmapKey? _maxScoreKey;
+        private int _highScore = 0;
+        private int _maxScore = 0;
 
         [AffinityPatch(typeof(LevelStatsView), nameof(LevelStatsView.ShowStats))]
         [AffinityPostfix]
         private void PostfixShowStats(LevelStatsView __instance, in BeatmapKey beatmapKey, PlayerData playerData)
         {
-            //Update highScoreText, if enabled in Plugin Config
-            if (!PluginConfig.Instance.EnableMenuHighscore || playerData == null)
+            if (!PluginConfig.Instance.EnableMenuHighscore)
             {
                 return;
             }
 
-            PlayerLevelStatsData playerLevelStatsData = playerData.GetOrCreatePlayerLevelStatsData(beatmapKey);
+            _levelStatsView = __instance;
+            _beatmapKey = beatmapKey;
 
-            if (playerLevelStatsData.validScore)
-            {
-                //Plugin.log.Debug("Valid Score");
-                var currentScore = playerLevelStatsData.highScore;
-                if (currentScore != 0)
-                {
-                    ShowPercentage(__instance, beatmapKey, currentScore);
-                }
-            }
+            PlayerLevelStatsData playerLevelStatsData = playerData.GetOrCreatePlayerLevelStatsData(beatmapKey);
+            _highScore = playerLevelStatsData.validScore ? playerLevelStatsData.highScore : 0;
+            UpdateHighScoreText();
         }
 
-        async void ShowPercentage(LevelStatsView __instance, BeatmapKey beatmapKey, int currentScore)
+        [AffinityPatch(typeof(ScoringCacheManager), nameof(ScoringCacheManager.GetScoringInfo))]
+        [AffinityPostfix]
+        private async void PostfixGetScoringInfo(BeatmapKey beatmapKey, Task<LevelScoringCache> __result)
         {
-            var levelScoringCache = await _scoringCacheManager.GetScoringInfo(beatmapKey);
-            int maxScore = levelScoringCache.MaxMultipliedScore;
-            //Plugin.log.Debug("Calculated Max Score: " + maxScore.ToString());
-
-            if (maxScore != 0)
+            if (!PluginConfig.Instance.EnableMenuHighscore)
             {
-                var currentPercentage = ScorePercentageCommon.calculatePercentage(maxScore, currentScore);
-                //Plugin.log.Debug("Calculated Percentage");
-                //Plugin.log.Debug("Adding Percentage to HighscoreText");
-
-                __instance._highScoreText.text = currentScore.ToString() + " " + "(" + Math.Round(currentPercentage, 2).ToString() + "%)";
+                return;
             }
+
+            var cache = await __result;
+            _maxScoreKey = beatmapKey;
+            _maxScore = cache.MaxMultipliedScore;
+            UpdateHighScoreText();
+        }
+
+        private void UpdateHighScoreText()
+        {
+            if (_highScore == 0 || _maxScore == 0 || _beatmapKey != _maxScoreKey || _levelStatsView == null)
+            {
+                return;
+            }
+            var percentage = ScorePercentageCommon.calculatePercentage(_maxScore, _highScore);
+            _levelStatsView._highScoreText.text = _highScore.ToString() + " " + "(" + Math.Round(percentage, 2).ToString() + "%)";
         }
     }
 }
