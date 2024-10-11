@@ -25,6 +25,7 @@ namespace ScorePercentage
             log = logger;
             PluginConfig.Instance = cfgProvider.Generated<PluginConfig>();
             zenjector.Install<MenuInstaller>(Location.Menu);
+            zenjector.Install<GameInstaller>(Location.GameCore);
         }
 
         [OnStart]

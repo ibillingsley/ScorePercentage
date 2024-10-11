@@ -4,26 +4,19 @@ using System;
 
 namespace ScorePercentage.Patches
 {
+    class ResultsViewData : IAffinity
+    {
+        public static int highScore = 0;
+
+        public ResultsViewData(PlayerDataModel playerDataModel, BeatmapKey beatmapKey)
+        {
+            var playerLevelStatsData = playerDataModel.playerData.GetOrCreatePlayerLevelStatsData(beatmapKey);
+            highScore = playerLevelStatsData.validScore ? playerLevelStatsData.highScore : 0;
+        }
+    }
+
     class ResultsViewControllerPatches : IAffinity
     {
-        private int highScore = 0;
-
-        [AffinityPatch(typeof(SoloFreePlayFlowCoordinator), nameof(SoloFreePlayFlowCoordinator.ProcessLevelCompletionResultsAfterLevelDidFinish))]
-        [AffinityPrefix]
-        private void PrefixProcessLevelCompletionResultsAfterLevelDidFinish(SoloFreePlayFlowCoordinator __instance, BeatmapKey beatmapKey)
-        {
-            var playerLevelStatsData = __instance.playerDataModel.playerData.GetOrCreatePlayerLevelStatsData(beatmapKey);
-            highScore = playerLevelStatsData.validScore ? playerLevelStatsData.highScore : 0;
-        }
-
-        [AffinityPatch(typeof(PartyFreePlayFlowCoordinator), nameof(PartyFreePlayFlowCoordinator.ProcessLevelCompletionResultsAfterLevelDidFinish))]
-        [AffinityPrefix]
-        private void PrefixPartyProcessLevelCompletionResultsAfterLevelDidFinish(PartyFreePlayFlowCoordinator __instance, BeatmapKey beatmapKey)
-        {
-            var playerLevelStatsData = __instance.playerDataModel.playerData.GetOrCreatePlayerLevelStatsData(beatmapKey);
-            highScore = playerLevelStatsData.validScore ? playerLevelStatsData.highScore : 0;
-        }
-
         [AffinityPatch(typeof(ResultsViewController), nameof(ResultsViewController.SetDataToUI))]
         [AffinityPostfix]
         private void PostfixSetDataToUI(ResultsViewController __instance)
@@ -32,6 +25,7 @@ namespace ScorePercentage.Patches
             double resultPercentage;
             int resultScore;
             int modifiedScore;
+            int highScore = ResultsViewData.highScore;
             // Default Rank Text
             string rankTextLine1 = __instance._rankText.text;
             string rankTextLine2 = "";
@@ -141,7 +135,7 @@ namespace ScorePercentage.Patches
             }//End Level Cleared
 
             // Reset highScore
-            highScore = 0;
+            ResultsViewData.highScore = 0;
 
         }//End Postfix Function
 
