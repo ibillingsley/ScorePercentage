@@ -8,7 +8,7 @@ namespace ScorePercentage.Installers
     {
         public override void InstallBindings()
         {
-            Container.BindInterfacesTo<ResultsViewData>().AsSingle();
+            Container.Bind<ResultsViewData>().AsSingle().NonLazy();
         }
     }
 }

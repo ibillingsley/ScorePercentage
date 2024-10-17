@@ -4,7 +4,7 @@ using System;
 
 namespace ScorePercentage.Patches
 {
-    class ResultsViewData : IAffinity
+    class ResultsViewData
     {
         public static int highScore = 0;
 
